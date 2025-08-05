@@ -1,0 +1,451 @@
+import React, { useState, useEffect, useRef } from 'react';
+import * as THREE from 'three';
+
+const SimplePersonalityGame = () => {
+  const mountRef = useRef(null);
+  const sceneRef = useRef(null);
+  const rendererRef = useRef(null);
+  const cameraRef = useRef(null);
+  const playerRef = useRef(null);
+  
+  const [gameState, setGameState] = useState('loading');
+  const [behaviorData, setBehaviorData] = useState({
+    introversion: 0,
+    riskTolerance: 0,
+    empathy: 0,
+    problemSolving: 0,
+    cooperation: 0,
+    explorationStyle: 0,
+    interactions: [],
+    movementData: { totalDistance: 0, avgSpeed: 0, directionChanges: 0 }
+  });
+  
+  const [currentAction, setCurrentAction] = useState('');
+  const [score, setScore] = useState(0);
+
+  const trackBehavior = (category, value, context = null) => {
+    setBehaviorData(prev => ({
+      ...prev,
+      [category]: Math.max(-5, Math.min(5, prev[category] + value)),
+      interactions: [...prev.interactions, { 
+        type: category, 
+        value, 
+        context, 
+        timestamp: Date.now()
+      }]
+    }));
+  };
+
+  useEffect(() => {
+    if (!mountRef.current) return;
+
+    // Minimal scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x444444); // Simple gray background
+    sceneRef.current = scene;
+
+    // Simple camera
+    const camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 100);
+    camera.position.set(0, 8, 12);
+    cameraRef.current = camera;
+
+    // Basic renderer - reduced size for performance
+    const renderer = new THREE.WebGLRenderer({ antialias: false });
+    renderer.setSize(800, 600);
+    renderer.shadowMap.enabled = false; // Disable shadows for performance
+    rendererRef.current = renderer;
+    mountRef.current.appendChild(renderer.domElement);
+
+    // Simple lighting
+    const light = new THREE.AmbientLight(0xffffff, 0.8);
+    scene.add(light);
+
+    createSimpleWorld(scene);
+    setGameState('playing');
+
+    // Simple controls
+    const keys = {};
+    let lastPosition = new THREE.Vector3();
+    let movementCount = 0;
+
+    const onKeyDown = (event) => keys[event.code] = true;
+    const onKeyUp = (event) => keys[event.code] = false;
+
+    const onMouseClick = (event) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(scene.children);
+      
+      if (intersects.length > 0) {
+        handleSimpleInteraction(intersects[0].object);
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    renderer.domElement.addEventListener('click', onMouseClick);
+
+    // Simple game loop
+    const animate = () => {
+      requestAnimationFrame(animate);
+      
+      if (playerRef.current) {
+        const player = playerRef.current;
+        const moveSpeed = 0.1;
+        let moved = false;
+
+        // Basic movement
+        if (keys['KeyW']) { player.position.z -= moveSpeed; moved = true; }
+        if (keys['KeyS']) { player.position.z += moveSpeed; moved = true; }
+        if (keys['KeyA']) { player.position.x -= moveSpeed; moved = true; }
+        if (keys['KeyD']) { player.position.x += moveSpeed; moved = true; }
+
+        // Track movement for behavior analysis
+        if (moved) {
+          const currentPos = player.position.clone();
+          const distance = currentPos.distanceTo(lastPosition);
+          
+          if (distance > 0.1) {
+            movementCount++;
+            setBehaviorData(prev => ({
+              ...prev,
+              movementData: {
+                ...prev.movementData,
+                totalDistance: prev.movementData.totalDistance + distance,
+                directionChanges: movementCount % 20 === 0 ? prev.movementData.directionChanges + 1 : prev.movementData.directionChanges
+              }
+            }));
+            
+            // Analyze movement patterns
+            if (movementCount % 50 === 0) {
+              if (distance > 0.15) {
+                trackBehavior('riskTolerance', 0.1, 'fast_movement');
+              } else {
+                trackBehavior('riskTolerance', -0.1, 'careful_movement');
+              }
+            }
+            
+            lastPosition = currentPos;
+          }
+        }
+
+        // Simple camera follow
+        camera.position.x = player.position.x;
+        camera.position.z = player.position.z + 12;
+        camera.lookAt(player.position.x, 0, player.position.z);
+
+        // Check proximity to objects for behavioral analysis
+        checkSimpleProximity(player.position, scene);
+      }
+
+      renderer.render(scene, camera);
+    };
+
+    animate();
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      if (renderer.domElement) {
+        renderer.domElement.removeEventListener('click', onMouseClick);
+      }
+      if (mountRef.current && renderer.domElement) {
+        mountRef.current.removeChild(renderer.domElement);
+      }
+      renderer.dispose();
+    };
+  }, []);
+
+  const createSimpleWorld = (scene) => {
+    // Simple ground plane
+    const groundGeometry = new THREE.PlaneGeometry(20, 20);
+    const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x90EE90 });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    // Simple player - green cube
+    const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const player = new THREE.Mesh(playerGeometry, playerMaterial);
+    player.position.set(0, 0.5, 0);
+    scene.add(player);
+    playerRef.current = player;
+
+    // Simple NPCs - colored cubes
+    const npcData = [
+      { color: 0xff0000, pos: [4, 0.5, 4], type: 'friendly' },
+      { color: 0x0000ff, pos: [-4, 0.5, -4], type: 'challenging' },
+      { color: 0xffff00, pos: [6, 0.5, -6], type: 'shy' }
+    ];
+
+    npcData.forEach((npc, i) => {
+      const npcGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+      const npcMaterial = new THREE.MeshBasicMaterial({ color: npc.color });
+      const npcMesh = new THREE.Mesh(npcGeometry, npcMaterial);
+      npcMesh.position.set(...npc.pos);
+      npcMesh.userData = { type: 'npc', personality: npc.type, id: i };
+      scene.add(npcMesh);
+    });
+
+    // Simple interactive objects - different colored cubes
+    const objects = [
+      { color: 0x8B4513, pos: [2, 0.3, 2], type: 'knowledge' },
+      { color: 0x808080, pos: [-3, 0.3, 3], type: 'tool' },
+      { color: 0x9370DB, pos: [5, 0.3, -2], type: 'creative' },
+      { color: 0xFF6347, pos: [0, 0.3, -5], type: 'social' },
+      { color: 0x32CD32, pos: [-6, 0.3, 6], type: 'challenge' }
+    ];
+
+    objects.forEach((obj, i) => {
+      const objGeometry = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+      const objMaterial = new THREE.MeshBasicMaterial({ color: obj.color });
+      const objMesh = new THREE.Mesh(objGeometry, objMaterial);
+      objMesh.position.set(...obj.pos);
+      objMesh.userData = { type: 'object', category: obj.type, id: i };
+      scene.add(objMesh);
+    });
+
+    // Simple walls for spatial behavior testing
+    const wallPositions = [
+      [-8, 1, 0], [8, 1, 0], [0, 1, -8], [0, 1, 8]
+    ];
+    
+    wallPositions.forEach(pos => {
+      const wallGeometry = new THREE.BoxGeometry(0.5, 2, 0.5);
+      const wallMaterial = new THREE.MeshBasicMaterial({ color: 0x666666 });
+      const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+      wall.position.set(...pos);
+      wall.userData = { type: 'wall' };
+      scene.add(wall);
+    });
+  };
+
+  const handleSimpleInteraction = (object) => {
+    if (!object.userData) return;
+
+    const userData = object.userData;
+    
+    if (userData.type === 'npc') {
+      switch (userData.personality) {
+        case 'friendly':
+          trackBehavior('introversion', 1, 'approached_friendly_npc');
+          trackBehavior('empathy', 0.5, 'social_interaction');
+          setCurrentAction('Chatting with friendly person...');
+          break;
+        case 'challenging':
+          trackBehavior('riskTolerance', 1, 'engaged_challenge');
+          trackBehavior('cooperation', -0.5, 'confrontational_interaction');
+          setCurrentAction('Dealing with challenging situation...');
+          break;
+        case 'shy':
+          trackBehavior('empathy', 1, 'gentle_with_shy_npc');
+          trackBehavior('introversion', -0.5, 'understands_introversion');
+          setCurrentAction('Being gentle with shy person...');
+          break;
+      }
+      setScore(prev => prev + 10);
+    }
+    
+    if (userData.type === 'object') {
+      switch (userData.category) {
+        case 'knowledge':
+          trackBehavior('problemSolving', 1, 'knowledge_seeking');
+          trackBehavior('introversion', -0.5, 'solitary_learning');
+          setCurrentAction('Studying and learning...');
+          break;
+        case 'tool':
+          trackBehavior('problemSolving', 0.5, 'practical_approach');
+          setCurrentAction('Using tools practically...');
+          break;
+        case 'creative':
+          trackBehavior('problemSolving', -1, 'creative_expression');
+          trackBehavior('explorationStyle', 1, 'artistic_interest');
+          setCurrentAction('Being creative...');
+          break;
+        case 'social':
+          trackBehavior('cooperation', 1, 'group_activity');
+          trackBehavior('introversion', 1, 'seeks_social_tasks');
+          setCurrentAction('Working on group project...');
+          break;
+        case 'challenge':
+          trackBehavior('riskTolerance', 2, 'accepts_challenges');
+          setCurrentAction('Taking on a challenge!');
+          break;
+      }
+      setScore(prev => prev + 5);
+    }
+
+    // Simple visual feedback
+    if (object.material) {
+      const originalColor = object.material.color.getHex();
+      object.material.color.setHex(0xffffff);
+      setTimeout(() => {
+        if (object.material) {
+          object.material.color.setHex(originalColor);
+        }
+      }, 300);
+    }
+
+    // Clear action after 2 seconds
+    setTimeout(() => setCurrentAction(''), 2000);
+  };
+
+  const checkSimpleProximity = (playerPos, scene) => {
+    scene.children.forEach(child => {
+      if (child.userData && child.userData.type === 'npc') {
+        const distance = playerPos.distanceTo(child.position);
+        
+        if (distance < 2) {
+          // Close to NPC - track social comfort
+          trackBehavior('introversion', 0.05, `near_${child.userData.personality}_npc`);
+          
+          if (child.userData.personality === 'shy') {
+            // Shy NPC moves away slightly
+            const direction = new THREE.Vector3()
+              .subVectors(child.position, playerPos)
+              .normalize()
+              .multiplyScalar(0.01);
+            child.position.add(direction);
+            trackBehavior('empathy', 0.05, 'respecting_personal_space');
+          }
+        }
+      }
+    });
+  };
+
+  const getSimplePersonalityResult = () => {
+    const traits = [];
+    
+    if (behaviorData.introversion > 1) traits.push("Social");
+    else if (behaviorData.introversion < -1) traits.push("Reflective");
+    
+    if (behaviorData.empathy > 1) traits.push("Caring");
+    if (behaviorData.cooperation > 0.5) traits.push("Team Player");
+    if (behaviorData.riskTolerance > 1) traits.push("Adventurous");
+    if (behaviorData.problemSolving > 1) traits.push("Analytical");
+    else if (behaviorData.problemSolving < -1) traits.push("Creative");
+    
+    return traits.length > 0 ? traits.join(" • ") : "Balanced";
+  };
+
+  if (gameState === 'loading') {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p>Loading Simple 3D World...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative bg-gray-900 p-4">
+      {/* Simple 3D Canvas */}
+      <div ref={mountRef} className="mx-auto border-2 border-gray-600 rounded" />
+      
+      {/* Minimal UI */}
+      <div className="flex justify-between mt-4 text-white">
+        <div className="bg-black bg-opacity-50 p-3 rounded">
+          <h3 className="font-bold text-sm">Controls</h3>
+          <p className="text-xs">WASD: Move • Click: Interact</p>
+        </div>
+        
+        <div className="bg-black bg-opacity-50 p-3 rounded">
+          <h3 className="font-bold text-sm">Score: {score}</h3>
+          <p className="text-xs">Interactions: {behaviorData.interactions.length}</p>
+        </div>
+      </div>
+
+      {/* Current Action */}
+      {currentAction && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-blue-500 text-white px-4 py-2 rounded">
+          {currentAction}
+        </div>
+      )}
+
+      {/* Simple Personality Display */}
+      <div className="mt-4 bg-black bg-opacity-50 text-white p-4 rounded">
+        <h3 className="font-bold mb-2">Current Personality Assessment</h3>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>Social Level: {behaviorData.introversion.toFixed(1)}</div>
+          <div>Empathy: {behaviorData.empathy.toFixed(1)}</div>
+          <div>Risk Taking: {behaviorData.riskTolerance.toFixed(1)}</div>
+          <div>Problem Style: {behaviorData.problemSolving.toFixed(1)}</div>
+        </div>
+        <div className="mt-2 text-blue-300">
+          <strong>Assessment: {getSimplePersonalityResult()}</strong>
+        </div>
+      </div>
+
+      {/* Analysis Button */}
+      <div className="text-center mt-4">
+        <button
+          onClick={() => setGameState('results')}
+          className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded font-medium"
+        >
+          View Full Analysis
+        </button>
+      </div>
+
+      {/* Simple Results Modal */}
+      {gameState === 'results' && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg max-w-md">
+            <h2 className="text-xl font-bold mb-4">Personality Analysis</h2>
+            
+            <div className="space-y-3">
+              <div>
+                <h4 className="font-medium">Primary Traits</h4>
+                <p className="text-gray-600">{getSimplePersonalityResult()}</p>
+              </div>
+              
+              <div>
+                <h4 className="font-medium">Behavior Summary</h4>
+                <p className="text-sm text-gray-600">
+                  {behaviorData.interactions.length} interactions recorded
+                  <br />
+                  Movement: {behaviorData.movementData.totalDistance.toFixed(1)} units
+                  <br />
+                  Exploration style: {behaviorData.movementData.directionChanges > 3 ? 'Exploratory' : 'Direct'}
+                </p>
+              </div>
+              
+              <div>
+                <h4 className="font-medium">Key Insights</h4>
+                <p className="text-sm text-gray-600">
+                  {behaviorData.empathy > 1 ? 'Shows high empathy in interactions. ' : ''}
+                  {behaviorData.riskTolerance > 1 ? 'Comfortable taking risks. ' : ''}
+                  {behaviorData.cooperation > 1 ? 'Prefers collaborative approaches.' : ''}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setGameState('playing')}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              >
+                Continue
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              >
+                Restart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default SimplePersonalityGame;
