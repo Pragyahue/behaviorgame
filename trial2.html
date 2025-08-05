@@ -1,0 +1,574 @@
+import React, { useState, useEffect, useRef } from 'react';
+import * as THREE from 'three';
+
+const PersonalityGame3D = () => {
+  const mountRef = useRef(null);
+  const sceneRef = useRef(null);
+  const rendererRef = useRef(null);
+  const cameraRef = useRef(null);
+  const playerRef = useRef(null);
+  const clockRef = useRef(new THREE.Clock());
+  
+  const [gameState, setGameState] = useState('loading');
+  const [behaviorData, setBehaviorData] = useState({
+    introversion: 0, // -5 to +5 scale
+    riskTolerance: 0,
+    empathy: 0,
+    problemSolving: 0,
+    cooperation: 0,
+    explorationStyle: 0, // methodical vs random
+    personalSpace: 0, // close vs distant interactions
+    interactions: [],
+    movementPatterns: { speed: 0, direction_changes: 0, exploration_radius: 0 }
+  });
+  
+  const [gameObjects, setGameObjects] = useState({
+    npcs: [],
+    interactables: [],
+    tasks: []
+  });
+  
+  const [currentFocus, setCurrentFocus] = useState(null);
+  const [inventory, setInventory] = useState([]);
+
+  const trackBehavior = (category, value, context = null) => {
+    setBehaviorData(prev => ({
+      ...prev,
+      [category]: Math.max(-5, Math.min(5, prev[category] + value)),
+      interactions: [...prev.interactions, { 
+        type: category, 
+        value, 
+        context, 
+        timestamp: Date.now(),
+        position: playerRef.current ? {
+          x: playerRef.current.position.x,
+          y: playerRef.current.position.y,
+          z: playerRef.current.position.z
+        } : null
+      }]
+    }));
+  };
+
+  useEffect(() => {
+    if (!mountRef.current) return;
+
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB); // Sky blue
+    sceneRef.current = scene;
+
+    // Camera setup
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 5, 10);
+    cameraRef.current = camera;
+
+    // Renderer setup
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth * 0.8, window.innerHeight * 0.8);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    rendererRef.current = renderer;
+    mountRef.current.appendChild(renderer.domElement);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+    scene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(-1, 1, 1);
+    directionalLight.castShadow = true;
+    scene.add(directionalLight);
+
+    // Create world environment
+    createWorld(scene);
+    
+    // Create player
+    const playerGeometry = new THREE.CapsuleGeometry(0.5, 1.5, 4, 8);
+    const playerMaterial = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+    const player = new THREE.Mesh(playerGeometry, playerMaterial);
+    player.position.set(0, 1, 0);
+    player.castShadow = true;
+    scene.add(player);
+    playerRef.current = player;
+
+    // Create NPCs with different personalities
+    createNPCs(scene);
+    
+    // Create interactive objects
+    createInteractables(scene);
+    
+    // Create tasks/challenges
+    createTasks(scene);
+
+    setGameState('playing');
+
+    // Controls
+    const keys = {};
+    let mouseX = 0, mouseY = 0;
+    let isMouseDown = false;
+
+    const onKeyDown = (event) => {
+      keys[event.code] = true;
+    };
+
+    const onKeyUp = (event) => {
+      keys[event.code] = false;
+    };
+
+    const onMouseMove = (event) => {
+      if (isMouseDown) {
+        mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+        mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+      }
+    };
+
+    const onMouseDown = (event) => {
+      isMouseDown = true;
+      // Raycasting for object interaction
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(scene.children, true);
+      
+      if (intersects.length > 0) {
+        handleObjectInteraction(intersects[0].object);
+      }
+    };
+
+    const onMouseUp = () => {
+      isMouseDown = false;
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    renderer.domElement.addEventListener('mousemove', onMouseMove);
+    renderer.domElement.addEventListener('mousedown', onMouseDown);
+    renderer.domElement.addEventListener('mouseup', onMouseUp);
+
+    // Movement tracking variables
+    let lastPosition = new THREE.Vector3();
+    let movementSpeed = 0;
+    let directionChanges = 0;
+    let lastDirection = new THREE.Vector3();
+
+    // Game loop
+    const animate = () => {
+      requestAnimationFrame(animate);
+      
+      const delta = clockRef.current.getDelta();
+      
+      if (player) {
+        const moveSpeed = 5 * delta;
+        let moved = false;
+        const moveDirection = new THREE.Vector3();
+
+        // Movement controls
+        if (keys['KeyW'] || keys['ArrowUp']) {
+          player.position.z -= moveSpeed;
+          moveDirection.z = -1;
+          moved = true;
+        }
+        if (keys['KeyS'] || keys['ArrowDown']) {
+          player.position.z += moveSpeed;
+          moveDirection.z = 1;
+          moved = true;
+        }
+        if (keys['KeyA'] || keys['ArrowLeft']) {
+          player.position.x -= moveSpeed;
+          moveDirection.x = -1;
+          moved = true;
+        }
+        if (keys['KeyD'] || keys['ArrowRight']) {
+          player.position.x += moveSpeed;
+          moveDirection.x = 1;
+          moved = true;
+        }
+
+        // Track movement patterns for personality analysis
+        if (moved) {
+          const currentPosition = player.position.clone();
+          const distance = currentPosition.distanceTo(lastPosition);
+          movementSpeed = distance / delta;
+          
+          // Track direction changes (indicates exploration vs direct movement)
+          if (moveDirection.distanceTo(lastDirection) > 0.5) {
+            directionChanges++;
+            // Frequent direction changes suggest exploratory/curious personality
+            if (directionChanges % 10 === 0) {
+              trackBehavior('explorationStyle', 0.1, 'direction_change');
+            }
+          }
+          
+          lastPosition = currentPosition;
+          lastDirection = moveDirection;
+        }
+
+        // Camera follows player (third person)
+        camera.position.x = player.position.x;
+        camera.position.z = player.position.z + 8;
+        camera.lookAt(player.position);
+
+        // Check proximity to NPCs for social behavior analysis
+        checkNPCProximity(player.position);
+      }
+
+      renderer.render(scene, camera);
+    };
+
+    animate();
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      if (renderer.domElement) {
+        renderer.domElement.removeEventListener('mousemove', onMouseMove);
+        renderer.domElement.removeEventListener('mousedown', onMouseDown);
+        renderer.domElement.removeEventListener('mouseup', onMouseUp);
+      }
+      if (mountRef.current && renderer.domElement) {
+        mountRef.current.removeChild(renderer.domElement);
+      }
+      renderer.dispose();
+    };
+  }, []);
+
+  const createWorld = (scene) => {
+    // Ground
+    const groundGeometry = new THREE.PlaneGeometry(50, 50);
+    const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x90EE90 });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Buildings/structures to create spaces
+    const buildingGeometry = new THREE.BoxGeometry(4, 3, 4);
+    const buildingMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    
+    // Scattered buildings create different social zones
+    const buildingPositions = [
+      { x: -10, z: -10 }, { x: 10, z: -10 }, { x: -10, z: 10 }, { x: 15, z: 5 }
+    ];
+    
+    buildingPositions.forEach(pos => {
+      const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+      building.position.set(pos.x, 1.5, pos.z);
+      building.castShadow = true;
+      scene.add(building);
+    });
+
+    // Trees for natural obstacles and hiding spots
+    for (let i = 0; i < 15; i++) {
+      const treeGeometry = new THREE.CylinderGeometry(0.5, 0.8, 4, 8);
+      const treeMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+      const tree = new THREE.Mesh(treeGeometry, treeMaterial);
+      tree.position.set(
+        (Math.random() - 0.5) * 40,
+        2,
+        (Math.random() - 0.5) * 40
+      );
+      tree.castShadow = true;
+      scene.add(tree);
+    }
+  };
+
+  const createNPCs = (scene) => {
+    const npcData = [
+      { 
+        name: 'Alex', 
+        color: 0xff0000, 
+        position: { x: 5, z: 5 }, 
+        personality: 'friendly',
+        movementPattern: 'social' // moves toward player
+      },
+      { 
+        name: 'Sam', 
+        color: 0x0000ff, 
+        position: { x: -8, z: -8 }, 
+        personality: 'demanding',
+        movementPattern: 'territorial' // guards an area
+      },
+      { 
+        name: 'Riley', 
+        color: 0xffff00, 
+        position: { x: 12, z: -5 }, 
+        personality: 'shy',
+        movementPattern: 'avoidant' // moves away from player if too close
+      }
+    ];
+
+    npcData.forEach(npc => {
+      const npcGeometry = new THREE.CapsuleGeometry(0.4, 1.2, 4, 8);
+      const npcMaterial = new THREE.MeshLambertMaterial({ color: npc.color });
+      const npcMesh = new THREE.Mesh(npcGeometry, npcMaterial);
+      npcMesh.position.set(npc.position.x, 1, npc.position.z);
+      npcMesh.castShadow = true;
+      npcMesh.userData = npc;
+      scene.add(npcMesh);
+    });
+  };
+
+  const createInteractables = (scene) => {
+    // Different types of objects test different behaviors
+    const interactables = [
+      { type: 'book', position: { x: 2, z: 2 }, color: 0x8B4513 }, // Knowledge seeking
+      { type: 'tool', position: { x: -5, z: 3 }, color: 0x696969 }, // Problem solving approach
+      { type: 'art', position: { x: 8, z: -2 }, color: 0x9370DB }, // Creativity/aesthetics
+      { type: 'group_task', position: { x: 0, z: -8 }, color: 0xFF6347 }, // Cooperation
+      { type: 'challenge', position: { x: -12, z: 8 }, color: 0x32CD32 } // Risk taking
+    ];
+
+    interactables.forEach(item => {
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshLambertMaterial({ color: item.color });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(item.position.x, 0.5, item.position.z);
+      mesh.castShadow = true;
+      mesh.userData = item;
+      scene.add(mesh);
+    });
+  };
+
+  const createTasks = (scene) => {
+    // Environmental puzzles that reveal problem-solving style
+    // Maze-like structure
+    const wallGeometry = new THREE.BoxGeometry(1, 2, 4);
+    const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
+    
+    // Create a simple maze
+    const wallPositions = [
+      { x: -15, z: 15 }, { x: -13, z: 15 }, { x: -11, z: 15 },
+      { x: -15, z: 13 }, { x: -11, z: 13 },
+      { x: -15, z: 11 }, { x: -13, z: 11 }, { x: -11, z: 11 }
+    ];
+    
+    wallPositions.forEach(pos => {
+      const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+      wall.position.set(pos.x, 1, pos.z);
+      wall.castShadow = true;
+      scene.add(wall);
+    });
+
+    // Goal object in maze
+    const goalGeometry = new THREE.SphereGeometry(0.5, 8, 6);
+    const goalMaterial = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
+    const goal = new THREE.Mesh(goalGeometry, goalMaterial);
+    goal.position.set(-13, 0.5, 13);
+    goal.userData = { type: 'goal', reward: 'maze_completion' };
+    scene.add(goal);
+  };
+
+  const handleObjectInteraction = (object) => {
+    if (!object.userData) return;
+
+    const userData = object.userData;
+    
+    switch (userData.type) {
+      case 'book':
+        trackBehavior('problemSolving', 1, 'knowledge_seeking');
+        trackBehavior('introversion', -0.5, 'solitary_activity');
+        setCurrentFocus('Reading increases analytical thinking...');
+        break;
+        
+      case 'tool':
+        trackBehavior('problemSolving', 0.5, 'practical_approach');
+        setCurrentFocus('You examine the tool carefully...');
+        break;
+        
+      case 'art':
+        trackBehavior('problemSolving', -1, 'creative_appreciation');
+        trackBehavior('explorationStyle', 1, 'aesthetic_interest');
+        setCurrentFocus('The artwork inspires creative thoughts...');
+        break;
+        
+      case 'group_task':
+        trackBehavior('cooperation', 2, 'group_activity_engagement');
+        trackBehavior('introversion', 1, 'social_task');
+        setCurrentFocus('This looks like it needs teamwork...');
+        break;
+        
+      case 'challenge':
+        trackBehavior('riskTolerance', 2, 'challenge_accepted');
+        setCurrentFocus('You decide to take on the challenge!');
+        break;
+        
+      case 'goal':
+        trackBehavior('problemSolving', 1, 'maze_solved');
+        trackBehavior('riskTolerance', 1, 'exploration_rewarded');
+        setCurrentFocus('Congratulations! You solved the maze!');
+        break;
+    }
+
+    // Visual feedback
+    object.material.color.setHex(0xffffff);
+    setTimeout(() => {
+      if (object.material) {
+        object.material.color.setHex(userData.color || 0x808080);
+      }
+    }, 500);
+  };
+
+  const checkNPCProximity = (playerPosition) => {
+    if (!sceneRef.current) return;
+    
+    sceneRef.current.children.forEach(child => {
+      if (child.userData && child.userData.personality) {
+        const distance = playerPosition.distanceTo(child.position);
+        
+        // Track social behavior based on proximity patterns
+        if (distance < 3) {
+          // Close proximity
+          trackBehavior('personalSpace', -0.1, `close_to_${child.userData.name}`);
+          
+          if (child.userData.personality === 'shy') {
+            trackBehavior('empathy', 0.1, 'respecting_shy_npc');
+            // Shy NPC moves away
+            const direction = new THREE.Vector3()
+              .subVectors(child.position, playerPosition)
+              .normalize()
+              .multiplyScalar(0.02);
+            child.position.add(direction);
+          } else if (child.userData.personality === 'friendly') {
+            trackBehavior('introversion', 0.1, 'social_interaction');
+            // Friendly NPC moves closer
+            const direction = new THREE.Vector3()
+              .subVectors(playerPosition, child.position)
+              .normalize()
+              .multiplyScalar(0.01);
+            child.position.add(direction);
+          }
+        } else if (distance > 8) {
+          // Maintaining distance
+          trackBehavior('personalSpace', 0.1, 'maintaining_distance');
+        }
+      }
+    });
+  };
+
+  const getPersonalityInsight = () => {
+    const traits = [];
+    
+    if (behaviorData.introversion > 1) traits.push("socially engaged");
+    else if (behaviorData.introversion < -1) traits.push("prefers solitude");
+    
+    if (behaviorData.empathy > 1) traits.push("considerate of others");
+    if (behaviorData.cooperation > 1) traits.push("team-oriented");
+    if (behaviorData.riskTolerance > 1) traits.push("adventurous");
+    if (behaviorData.explorationStyle > 1) traits.push("curious explorer");
+    if (behaviorData.problemSolving > 1) traits.push("analytical thinker");
+    else if (behaviorData.problemSolving < -1) traits.push("creative problem solver");
+    
+    return traits.length > 0 ? traits.join(", ") : "balanced personality";
+  };
+
+  if (gameState === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-lg">Loading 3D World...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full h-screen bg-gray-900">
+      {/* 3D Canvas */}
+      <div ref={mountRef} className="w-full h-full" />
+      
+      {/* UI Overlay */}
+      <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white p-4 rounded-lg max-w-sm">
+        <h3 className="font-bold mb-2">Controls</h3>
+        <p className="text-sm mb-1">WASD or Arrow Keys: Move</p>
+        <p className="text-sm mb-1">Mouse: Click to interact</p>
+        <p className="text-sm">Explore and interact naturally!</p>
+      </div>
+
+      {/* Current Focus */}
+      {currentFocus && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white p-3 rounded-lg">
+          {currentFocus}
+        </div>
+      )}
+
+      {/* Personality Tracker */}
+      <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white p-4 rounded-lg max-w-xs">
+        <h3 className="font-bold mb-2">Behavioral Patterns</h3>
+        <div className="text-xs space-y-1">
+          <div>Social: {behaviorData.introversion.toFixed(1)}</div>
+          <div>Empathy: {behaviorData.empathy.toFixed(1)}</div>
+          <div>Risk: {behaviorData.riskTolerance.toFixed(1)}</div>
+          <div>Problem Solving: {behaviorData.problemSolving.toFixed(1)}</div>
+          <div>Cooperation: {behaviorData.cooperation.toFixed(1)}</div>
+        </div>
+        <div className="mt-2 text-xs text-blue-300">
+          <p>Current Assessment:</p>
+          <p>{getPersonalityInsight()}</p>
+        </div>
+      </div>
+
+      {/* Analysis Button */}
+      <button
+        onClick={() => setGameState('results')}
+        className="absolute bottom-4 right-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium"
+      >
+        View Personality Analysis
+      </button>
+
+      {/* Results Modal */}
+      {gameState === 'results' && (
+        <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg max-w-2xl max-h-96 overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-4">Your Behavioral Analysis</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold">Movement Patterns</h3>
+                <p className="text-sm text-gray-600">
+                  Your exploration style reveals: {getPersonalityInsight()}
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold">Social Interactions</h3>
+                <p className="text-sm text-gray-600">
+                  Interactions: {behaviorData.interactions.length} recorded
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold">Object Preferences</h3>
+                <p className="text-sm text-gray-600">
+                  Your choices show preference for{' '}
+                  {behaviorData.problemSolving > 0 ? 'analytical' : 'creative'} approaches
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-4 mt-6">
+              <button
+                onClick={() => setGameState('playing')}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              >
+                Continue Playing
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              >
+                Restart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default PersonalityGame3D;
