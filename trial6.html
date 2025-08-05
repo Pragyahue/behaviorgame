@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Escape Room - Personality Game</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    input, select, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 5px 0;
+    }
+    .room {
+      display: none;
+      margin-top: 20px;
+    }
+    .object {
+      background-color: #1e1e1e;
+      padding: 10px;
+      margin: 10px 0;
+      border: 2px solid #333;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    #result {
+      margin-top: 20px;
+      background-color: #1a1a1a;
+      padding: 15px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🧩 Escape Room: Discover Your Personality</h1>
+
+  <!-- Avatar Creation -->
+  <div id="avatar">
+    <label>Name: <input type="text" id="nameInput" placeholder="Enter your name" /></label><br>
+    <label>Background:
+      <select id="background">
+        <option value="adventurous">Adventurous</option>
+        <option value="analytical">Analytical</option>
+        <option value="empathetic">Empathetic</option>
+      </select>
+    </label><br>
+    <button onclick="startGame()">Enter Escape Room</button>
+  </div>
+
+  <!-- Room Interaction -->
+  <div id="room" class="room">
+    <h2>🚪 Room 1: Escape Begins</h2>
+    <p>You're in a locked room with a puzzle board, a strange NPC, and a locked door. What will you do?</p>
+
+    <div class="object" onclick="interact('puzzle')">🧠 Solve Puzzle (tests Conscientiousness)</div>
+    <div class="object" onclick="interact('npc')">🧍 Talk to NPC (tests Agreeableness)</div>
+    <div class="object" onclick="interact('door')">🚪 Try to Force the Door Open (tests Risk Tolerance)</div>
+
+    <button onclick="endGame()">Finish Game & See Results</button>
+  </div>
+
+  <!-- Result Display -->
+  <div id="result" class="room"></div>
+
+  <script>
+    const traits = {
+      openness: 0,
+      conscientiousness: 0,
+      agreeableness: 0,
+      neuroticism: 0,
+      extraversion: 0,
+      riskTolerance: 0
+    };
+
+    let avatar = {
+      name: "",
+      background: ""
+    };
+
+    function startGame() {
+      avatar.name = document.getElementById("nameInput").value;
+      avatar.background = document.getElementById("background").value;
+
+      if (!avatar.name) {
+        alert("Please enter a name.");
+        return;
+      }
+
+      // Initialize based on background
+      if (avatar.background === "adventurous") traits.openness += 2;
+      if (avatar.background === "analytical") traits.conscientiousness += 2;
+      if (avatar.background === "empathetic") traits.agreeableness += 2;
+
+      document.getElementById("avatar").style.display = "none";
+      document.getElementById("room").style.display = "block";
+
+      console.log("Game Started:", avatar);
+    }
+
+    function interact(object) {
+      switch (object) {
+        case 'puzzle':
+          traits.conscientiousness += 2;
+          log(`You solved a complex puzzle. (+2 Conscientiousness)`);
+          break;
+        case 'npc':
+          traits.agreeableness += 2;
+          log(`You helped the NPC find their glasses. (+2 Agreeableness)`);
+          break;
+        case 'door':
+          traits.riskTolerance += 2;
+          log(`You tried to force the door open. (+2 Risk Tolerance)`);
+          break;
+      }
+    }
+
+    function log(message) {
+      const div = document.createElement('div');
+      div.innerText = message;
+      document.getElementById('room').appendChild(div);
+    }
+
+    function endGame() {
+      document.getElementById("room").style.display = "none";
+      const result = document.getElementById("result");
+      result.style.display = "block";
+
+      result.innerHTML = `
+        <h2>🧠 Personality Profile: ${avatar.name}</h2>
+        <p><strong>Openness:</strong> ${traits.openness}</p>
+        <p><strong>Conscientiousness:</strong> ${traits.conscientiousness}</p>
+        <p><strong>Agreeableness:</strong> ${traits.agreeableness}</p>
+        <p><strong>Risk Tolerance:</strong> ${traits.riskTolerance}</p>
+        <p><strong>Summary:</strong> Based on your actions, you're ${summarizePersonality()}.</p>
+      `;
+    }
+
+    function summarizePersonality() {
+      if (traits.agreeableness >= 2 && traits.riskTolerance >= 2) return "a compassionate risk-taker";
+      if (traits.conscientiousness >= 3) return "a thoughtful problem solver";
+      if (traits.openness >= 3) return "a curious explorer";
+      return "still discovering yourself!";
+    }
+  </script>
+
+</body>
+</html>

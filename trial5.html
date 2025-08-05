@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Escape Room – Avatar Creation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #111;
+      color: #fff;
+      padding: 20px;
+    }
+
+    input, select, button {
+      margin: 10px 0;
+      padding: 8px;
+      font-size: 16px;
+    }
+
+    #log {
+      margin-top: 20px;
+      background: #222;
+      padding: 10px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🚪 Escape Room: Avatar Creation</h1>
+
+  <label>Name: <input type="text" id="playerName" placeholder="Your name"></label><br>
+  <label>Choose Background:
+    <select id="backgroundSelect">
+      <option value="adventurous">Adventurous</option>
+      <option value="analytical">Analytical</option>
+      <option value="empathetic">Empathetic</option>
+    </select>
+  </label><br>
+
+  <button onclick="createAvatar()">Create Avatar</button>
+
+  <div id="log"></div>
+
+  <script>
+    // Define personality object
+    const personality = {
+      openness: 0,
+      conscientiousness: 0,
+      agreeableness: 0
+    };
+
+    function createAvatar() {
+      const name = document.getElementById('playerName').value;
+      const background = document.getElementById('backgroundSelect').value;
+
+      // Modify personality based on background
+      if (background === 'adventurous') personality.openness += 2;
+      if (background === 'analytical') personality.conscientiousness += 2;
+      if (background === 'empathetic') personality.agreeableness += 2;
+
+      // Display result
+      const logDiv = document.getElementById('log');
+      logDiv.innerHTML = `
+        <h2>🎮 Avatar Created</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Background:</strong> ${background}</p>
+        <h3>🧠 Initial Personality Traits</h3>
+        <ul>
+          <li>Openness: ${personality.openness}</li>
+          <li>Conscientiousness: ${personality.conscientiousness}</li>
+          <li>Agreeableness: ${personality.agreeableness}</li>
+        </ul>
+      `;
+
+      console.log("Avatar Created:", name, "Traits:", personality);
+    }
+  </script>
+
+</body>
+</html>
