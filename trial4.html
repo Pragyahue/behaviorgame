@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Escape Room 3D (Browser Version)</title>
+    <meta charset="utf-8" />
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <style>
+      #ui {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 10px;
+        border-radius: 8px;
+        font-family: sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="ui">
+      <label>Name: <input id="nameInput" type="text" /></label>
+      <button onclick="saveAvatar()">Create Avatar</button>
+      <p id="status"></p>
+    </div>
+
+    <a-scene>
+      <!-- Room Environment -->
+      <a-box position="0 0.25 -3" depth="6" height="0.5" width="6" color="#7BC8A4"></a-box>
+      <a-box position="0 1.5 -6" depth="0.5" height="3" width="6" color="#FFF"></a-box>
+      <a-box position="3 1.5 -3" depth="6" height="3" width="0.5" color="#FFF"></a-box>
+      <a-box position="-3 1.5 -3" depth="6" height="3" width="0.5" color="#FFF"></a-box>
+      <a-box position="0 3 -3" depth="6" height="0.5" width="6" color="#FFF"></a-box>
+
+      <!-- Interactive Terminal -->
+      <a-box id="terminal" position="0 1 -2" depth="0.2" height="1" width="1.5" color="#333">
+        <a-text value="Interact with Terminal" position="-0.6 0.6 0.1" color="#FFF" width="2"></a-text>
+      </a-box>
+
+      <!-- NPC -->
+      <a-sphere id="npc" position="2 1 -2" radius="0.5" color="#FF8888">
+        <a-text value="NPC" position="-0.25 0.7 0" color="#000" width="2"></a-text>
+      </a-sphere>
+
+      <!-- Camera + Controls -->
+      <a-entity camera position="0 1.6 0" look-controls wasd-controls></a-entity>
+    </a-scene>
+
+    <script>
+      function saveAvatar() {
+        const name = document.getElementById('nameInput').value;
+        document.getElementById('status').innerText = "Welcome, " + name + "! Avatar created.";
+        console.log("Avatar Name:", name);
+      }
+
+      document.querySelector('#npc').addEventListener('click', () => {
+        alert("You spoke to the NPC. (+Agreeableness)");
+        console.log("Player interacted with NPC");
+      });
+
+      document.querySelector('#terminal').addEventListener('click', () => {
+        alert("You used the terminal. (+Openness)");
+        console.log("Player interacted with terminal");
+      });
+    </script>
+  </body>
+</html>
