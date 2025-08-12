@@ -1,0 +1,586 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✨ Galaxy Dictator Game ✨</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Press+Start+2P&display=swap');
+        
+        body {
+            font-family: 'Orbitron', sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        .game-container {
+            border: 3px solid #00ff88;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+            background: rgba(10, 20, 30, 0.8);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3),
+                        0 0 40px rgba(0, 255, 136, 0.1);
+            backdrop-filter: blur(5px);
+        }
+        h1 {
+            color: #00ff88;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.7),
+                         0 0 20px rgba(0, 255, 136, 0.5);
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #a0eaff;
+            font-style: italic;
+            margin-bottom: 30px;
+            font-size: 1.2em;
+        }
+        .round-info {
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #00ff88;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+        .total-money {
+            text-align: center;
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+            margin-bottom: 20px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        .slider-container {
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(0, 255, 136, 0.05);
+            border-radius: 15px;
+            border: 2px dashed rgba(0, 255, 136, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        .slider-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                rgba(0, 255, 136, 0) 0%,
+                rgba(0, 255, 136, 1) 50%,
+                rgba(0, 255, 136, 0) 100%);
+            animation: shine 3s infinite;
+        }
+        @keyframes shine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #00ff88;
+            text-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
+        }
+        .slider {
+            width: 100%;
+            height: 12px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            opacity: 0.8;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+        }
+        .slider:hover {
+            opacity: 1;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #00ff88;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.8);
+            border: 3px solid #000;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 15px rgba(0, 255, 136, 0.8); }
+            50% { box-shadow: 0 0 25px rgba(0, 255, 136, 1); }
+            100% { box-shadow: 0 0 15px rgba(0, 255, 136, 0.8); }
+        }
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #00ff88;
+            cursor: pointer;
+            border: 3px solid #000;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.8);
+        }
+        .amounts-display {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .amount-box {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            width: 45%;
+            font-weight: bold;
+            font-size: 1.3em;
+            position: relative;
+            overflow: hidden;
+        }
+        .amount-box::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+        .your-amount {
+            background: rgba(255, 69, 69, 0.1);
+            border: 2px solid rgba(255, 69, 69, 0.3);
+            color: #ff4545;
+        }
+        .your-amount::before {
+            background: linear-gradient(90deg, #ff4545, #ff8a8a);
+        }
+        .receiver-amount {
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            color: #00ff88;
+        }
+        .receiver-amount::before {
+            background: linear-gradient(90deg, #00ff88, #8affc8);
+        }
+        button {
+            background: linear-gradient(45deg, #00ff88, #00cc6a);
+            color: #002211;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.3em;
+            font-weight: bold;
+            display: block;
+            margin: 25px auto;
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.3);
+            transition: all 0.3s;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        button:hover {
+            background: linear-gradient(45deg, #00cc6a, #00ff88);
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 255, 136, 0.5);
+        }
+        button:active {
+            transform: translateY(1px);
+        }
+        button::after {
+            content: "🚀";
+            margin-left: 10px;
+            transition: transform 0.3s;
+        }
+        button:hover::after {
+            transform: translateX(5px);
+        }
+        .results {
+            margin-top: 20px;
+            padding: 30px;
+            border: 3px solid #00ff88;
+            border-radius: 15px;
+            background: rgba(10, 20, 30, 0.9);
+            display: none;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+            backdrop-filter: blur(5px);
+        }
+        .aggreableness-score {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 25px 0;
+            padding: 20px;
+            border-radius: 15px;
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+        .high {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: rgba(0, 255, 136, 0.5);
+            color: #00ff88;
+        }
+        .moderate {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: rgba(255, 215, 0, 0.5);
+            color: #ffd700;
+        }
+        .low {
+            background: rgba(255, 69, 69, 0.1);
+            border-color: rgba(255, 69, 69, 0.5);
+            color: #ff4545;
+        }
+        .emoji {
+            font-size: 4em;
+            margin: 20px 0;
+            text-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+        }
+        .history {
+            margin-top: 25px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .history::-webkit-scrollbar {
+            width: 8px;
+        }
+        .history::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+        .history::-webkit-scrollbar-thumb {
+            background: #00ff88;
+            border-radius: 4px;
+        }
+        .history-title {
+            font-weight: bold;
+            color: #00ff88;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 1.2em;
+            text-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
+        }
+        .history-item {
+            padding: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9em;
+        }
+        .progress-container {
+            margin: 25px 0;
+            height: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00cc6a);
+            width: 0%;
+            transition: width 0.8s cubic-bezier(0.2, 0.8, 0.7, 0.3);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -100px; }
+            100% { background-position: 100px; }
+        }
+        .game-over {
+            text-align: center;
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #00ff88;
+            margin: 20px 0;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.8;
+            animation: twinkle 5s infinite;
+        }
+        @keyframes twinkle {
+            0% { opacity: 0.2; }
+            50% { opacity: 1; }
+            100% { opacity: 0.2; }
+        }
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Stars background -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const body = document.querySelector('body');
+            for (let i = 0; i < 50; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                star.classList.add('floating');
+                star.style.left = Math.random() * 100 + 'vw';
+                star.style.top = Math.random() * 100 + 'vh';
+                star.style.width = (Math.random() * 3 + 1) + 'px';
+                star.style.height = star.style.width;
+                star.style.animationDelay = Math.random() * 5 + 's';
+                body.appendChild(star);
+            }
+        });
+    </script>
+    
+    <h1>✨ Galaxy Dictator Game ✨</h1>
+    <p class="subtitle">Distribute cosmic energy and discover your aggreableness level!</p>
+    
+    <div class="game-container">
+        <div class="round-info" id="round-info">Galactic Round 1 of 5</div>
+        
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        
+        <div class="total-money" id="total-money">Cosmic Energy: 100⚡</div>
+        
+        <div class="slider-container">
+            <div class="slider-label">
+                <span>Keep: <span id="your-value">100</span>⚡</span>
+                <span>Share: <span id="give-value">0</span>⚡</span>
+            </div>
+            <input type="range" min="0" max="100" value="0" class="slider" id="give-amount">
+            <div class="slider-label">
+                <span>Self-Focused</span>
+                <span>Community-Focused</span>
+            </div>
+        </div>
+        
+        <div class="amounts-display">
+            <div class="amount-box your-amount">
+                Your Energy: <span id="your-amount">100</span>⚡
+            </div>
+            <div class="amount-box receiver-amount">
+                Receiver's Energy: <span id="receiver-amount">0</span>⚡
+            </div>
+        </div>
+        
+        <button id="submit-decision">Deploy Decision 🚀</button>
+        
+        <div class="history">
+            <div class="history-title">📜 Cosmic Transaction Log</div>
+            <div id="history-list"></div>
+        </div>
+    </div>
+
+    <div class="results" id="results">
+        <h2>🌟 Mission Complete! 🌟</h2>
+        <div class="game-over" id="game-over-text"></div>
+        <div class="emoji" id="emoji"></div>
+        <h3>Your Aggreableness Score:</h3>
+        <div class="aggreableness-score" id="aggreableness-score"></div>
+        <p id="score-description"></p>
+        <p>Throughout your cosmic journey, you shared <span id="total-given"></span> of your energy with others.</p>
+        <button id="play-again">New Mission 🚀</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Game variables
+            let currentRound = 1;
+            let totalMoney = 100;
+            let maxRounds = 5;
+            let decisions = [];
+            let totalGiven = 0;
+            
+            // DOM elements
+            const roundInfo = document.getElementById('round-info');
+            const totalMoneyEl = document.getElementById('total-money');
+            const slider = document.getElementById('give-amount');
+            const giveValue = document.getElementById('give-value');
+            const yourValue = document.getElementById('your-value');
+            const yourAmount = document.getElementById('your-amount');
+            const receiverAmount = document.getElementById('receiver-amount');
+            const submitButton = document.getElementById('submit-decision');
+            const results = document.getElementById('results');
+            const aggreablenessScore = document.getElementById('aggreableness-score');
+            const scoreDescription = document.getElementById('score-description');
+            const emoji = document.getElementById('emoji');
+            const gameOverText = document.getElementById('game-over-text');
+            const totalGivenEl = document.getElementById('total-given');
+            const historyList = document.getElementById('history-list');
+            const progressBar = document.getElementById('progress-bar');
+            const playAgainBtn = document.getElementById('play-again');
+            
+            // Update the amounts when slider moves
+            slider.oninput = function() {
+                const give = parseInt(this.value);
+                const keep = totalMoney - give;
+                
+                giveValue.textContent = give;
+                yourValue.textContent = keep;
+                receiverAmount.textContent = give;
+                yourAmount.textContent = keep;
+            };
+            
+            // Initialize slider max value
+            updateSliderMax();
+            
+            // Submit the decision
+            submitButton.onclick = function() {
+                const give = parseInt(slider.value);
+                const keep = totalMoney - give;
+                
+                // Record decision
+                decisions.push({
+                    round: currentRound,
+                    totalMoney: totalMoney,
+                    give: give,
+                    keep: keep
+                });
+                
+                totalGiven += give;
+                
+                // Add to history
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.textContent = `Round ${currentRound}: Kept ${keep}⚡, Shared ${give}⚡`;
+                historyList.appendChild(historyItem);
+                
+                // Check if this is the last round
+                if (currentRound >= maxRounds) {
+                    // Game over - calculate results
+                    calculateResults();
+                    results.style.display = 'block';
+                    document.querySelector('.game-container').style.display = 'none';
+                    results.scrollIntoView({behavior: 'smooth'});
+                } else {
+                    // Move to next round
+                    currentRound++;
+                    totalMoney -= 20; // Reduce total money by $20 each round
+                    
+                    // Update UI
+                    roundInfo.textContent = `Galactic Round ${currentRound} of ${maxRounds}`;
+                    totalMoneyEl.textContent = `Cosmic Energy: ${totalMoney}⚡`;
+                    
+                    // Update slider
+                    updateSliderMax();
+                    slider.value = 0;
+                    slider.oninput(); // Trigger the input event to update displays
+                    
+                    // Update progress bar
+                    updateProgress();
+                }
+            };
+            
+            // Play again button
+            playAgainBtn.onclick = function() {
+                // Reset game
+                currentRound = 1;
+                totalMoney = 100;
+                decisions = [];
+                totalGiven = 0;
+                
+                // Reset UI
+                document.querySelector('.game-container').style.display = 'block';
+                results.style.display = 'none';
+                
+                roundInfo.textContent = `Galactic Round ${currentRound} of ${maxRounds}`;
+                totalMoneyEl.textContent = `Cosmic Energy: ${totalMoney}⚡`;
+                
+                // Clear history
+                historyList.innerHTML = '';
+                
+                // Reset slider
+                updateSliderMax();
+                slider.value = 0;
+                slider.oninput();
+                
+                // Update progress
+                updateProgress();
+            };
+            
+            function updateSliderMax() {
+                slider.max = totalMoney;
+                // Reset slider if current value exceeds max
+                if (parseInt(slider.value) > totalMoney) {
+                    slider.value = totalMoney;
+                }
+                slider.oninput();
+            }
+            
+            function updateProgress() {
+                const progress = (currentRound / maxRounds) * 100;
+                progressBar.style.width = progress + '%';
+            }
+            
+            function calculateResults() {
+                // Calculate total given and determine aggreableness
+                // High aggreableness = gave more (difference is high between what receiver got vs what you kept)
+                // Low aggreableness = kept more for yourself
+                
+                let score, description, scoreClass, text, emojiText;
+                
+                if (totalGiven > 100) {
+                    score = "HIGH AGGREABLENESS";
+                    description = "You consistently shared generously throughout your cosmic journey! Your actions demonstrate exceptional consideration for others and a strong sense of community. The universe celebrates your kindness!";
+                    scoreClass = "high";
+                    text = "Cosmic Peacemaker!";
+                    emojiText = "✨🌌💫";
+                } else if (totalGiven > 50) {
+                    score = "MODERATE AGGREABLENESS";
+                    description = "You showed balanced judgment in your energy distribution. Sometimes prioritizing your needs, other times sharing with others. This thoughtful approach reflects emotional intelligence and situational awareness.";
+                    scoreClass = "moderate";
+                    text = "Harmony Seeker!";
+                    emojiText = "🛸🛸🛸";
+                } else {
+                    score = "LOW AGGREABLENESS";
+                    description = "You primarily focused on preserving your own energy reserves throughout the mission. This self-preserving strategy ensures your survival but may limit opportunities for cosmic cooperation and alliance building.";
+                    scoreClass = "low";
+                    text = "Independent Operator!";
+                    emojiText = "🚀🛸🚀";
+                }
+                
+                // Update results UI
+                aggreablenessScore.textContent = score;
+                aggreablenessScore.className = `aggreableness-score ${scoreClass}`;
+                scoreDescription.textContent = description;
+                gameOverText.textContent = text;
+                emoji.textContent = emojiText;
+                totalGivenEl.textContent = totalGiven + '⚡';
+            }
+            
+            // Initialize progress bar
+            updateProgress();
+        });
+    </script>
+</body>
+</html>
+```
