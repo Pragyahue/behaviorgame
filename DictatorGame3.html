@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InsightGenie Decision Assessment</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            line-height: 1.7;
+            background: linear-gradient(135deg, #013000, #000000);            
+            color: #e7f4e7;
+            min-height: 100vh;
+        }
+
+        h1 {
+            font-size: 2em;
+            font-weight: 600;
+            text-align: center;
+            color: #9CE452;
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px rgba(156, 228, 82, 0.6);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #9FD39D;
+            font-size: 1.1em;
+            font-weight: 400;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 16px rgba(51, 154, 49, 0.2);
+            border: 1px solid #9FD39D;
+            backdrop-filter: blur(4px);
+        }
+
+        .round-info {
+            text-align: center;
+            font-weight: 600;
+            color: #339A31;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+
+        .total-money {
+            text-align: center;
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #013000;
+            margin-bottom: 25px;
+        }
+
+        .slider-container {
+            margin: 30px 0;
+            padding: 20px;
+          background: rgba(231, 244, 231, 0.05);
+            border-radius: 10px;
+            border: 1px solid #9FD39D;
+	position: relative;
+            overflow: hidden;
+        }
+
+	.slider-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                rgba(231, 244, 231, 0) 0%,
+                rgba(156, 228, 82, 1) 50%,
+                rgba(231, 244, 231, 0) 100%);
+            animation: shine 3s infinite;
+
+        }
+
+	@keyframes shine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95em;
+            color: #013000;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #9FD39D;
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #339A31;
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(51, 154, 49, 0.3);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #339A31;
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(51, 154, 49, 0.3);
+        }
+
+        .amounts-display {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            gap: 15px;
+        }
+
+        .amount-box {
+            flex: 1;
+            text-align: center;
+            padding: 14px;
+            background: #E7F4E7;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #013000;
+            font-size: 1.1em;
+            border: 1px solid #9FD39D;
+        }
+
+        button {
+            background: #339A31;
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            display: block;
+            margin: 25px auto;
+            box-shadow: 0 4px 8px rgba(51, 154, 49, 0.3);
+            transition: all 0.2s;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover {
+            background: #2a802a;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .current-scores {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            padding: 16px;
+            background: #E7F4E7;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #013000;
+            border: 1px solid #9FD39D;
+        }
+
+        .score-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .score-label {
+            font-size: 0.9em;
+            color: #339A31;
+            margin-bottom: 4px;
+        }
+
+        .history {
+            margin-top: 25px;
+            padding: 15px;
+            background: #E7F4E7;
+            border-radius: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #9FD39D;
+            font-size: 0.95em;
+            color: #013000;
+        }
+
+        .history-title {
+            font-weight: 600;
+            color: #339A31;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 1em;
+        }
+
+        .history-item {
+            padding: 6px 0;
+            border-bottom: 1px solid #9FD39D;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .progress-container {
+            margin: 25px 0;
+            height: 10px;
+            background: #013000;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #013000, #9CE452);
+            width: 0%;
+            transition: width 0.8s cubic-bezier(0.2, 0.8, 0.7, 0.3);
+	animation: shimmer 2s infinite;
+        }
+
+
+        @keyframes shimmer {
+            0% { background-position: -100px; }
+            100% { background-position: 100px; }
+        }
+
+        .results {
+            margin-top: 30px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(51, 154, 49, 0.2);
+            border: 1px solid #9FD39D;
+	color: #013000;
+            text-align: center;
+            display: none;
+            backdrop-filter: blur(4px);
+        }
+
+        .game-over {
+            font-size: 1.6em;
+            font-weight: 600;
+            color: #339A31;
+            margin: 15px 0;
+        }
+
+        .aggreableness-score {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #339A31;
+            margin: 20px 0;
+            padding: 15px;
+            background: #E7F4E7;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .emoji {
+            font-size: 2.5em;
+            margin: 15px 0;
+        }
+	
+	 .star {
+            position: absolute;
+            background: #FFD700;
+            border-radius: 50%;
+            opacity: 0.8;
+            animation: twinkle 5s infinite;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.2; }
+            50% { opacity: 1; }
+            100% { opacity: 0.2; }
+        }
+
+
+        #play-again {
+            background: #9CE452;
+            color: #013000;
+        }
+
+        #play-again:hover {
+            background: #8dd541;
+        }
+    </style>
+</head>
+<body>
+	<script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const body = document.querySelector('body');
+            for (let i = 0; i < 60; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                if (i % 2 === 0) star.classList.add('floating');
+                star.style.left = Math.random() * 100 + 'vw';
+                star.style.top = Math.random() * 100 + 'vh';
+                star.style.width = (Math.random() * 3 + 1) + 'px';
+                star.style.height = star.style.width;
+                star.style.animationDelay = Math.random() * 5 + 's';
+                body.appendChild(star);
+            }
+        });
+    </script>
+
+    <h1>InsightGenie Decision Assessment</h1>
+    <p class="subtitle">Allocate energy and reveal your behavioral style.</p>
+    
+    <div class="game-container">
+        <div class="round-info" id="round-info">Round 1 of 5</div>
+        
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        
+        <div class="total-money" id="total-money">Available Energy: 100⚡</div>
+        
+        <div class="slider-container">
+            <div class="slider-label">
+                <span>Keep: <span id="your-value">100</span>⚡</span>
+                <span>Share: <span id="give-value">0</span>⚡</span>
+            </div>
+            <input type="range" min="0" max="100" value="0" class="slider" id="give-amount">
+            <div class="slider-label">
+                <span>Self-Focused</span>
+                <span>Other-Focused</span>
+            </div>
+        </div>
+        
+        <div class="amounts-display">
+            <div class="amount-box">
+                Your Share: <span id="your-amount">100</span>⚡
+            </div>
+            <div class="amount-box">
+                Receiver's Share: <span id="receiver-amount">0</span>⚡
+            </div>
+        </div>
+
+        <!-- Live cumulative scores after each round -->
+        <div class="current-scores" id="current-scores" style="display: none;">
+            <div class="score-item">
+                <div class="score-label">Your Total</div>
+                <div id="player-total">0</div>
+            </div>
+            <div class="score-item">
+                <div class="score-label">Receiver Total</div>
+                <div id="receiver-total">0</div>
+            </div>
+        </div>
+        
+        <button id="submit-decision">Submit Decision</button>
+        
+        <div class="history">
+            <div class="history-title">Decision Log</div>
+            <div id="history-list"></div>
+        </div>
+    </div>
+
+    <div class="results" id="results">
+        <h2>Assessment Complete</h2>
+        <div class="game-over">Your Behavioral Profile</div>
+        <div class="aggreableness-score" id="aggreableness-score"></div>
+        <p class="subtitle">This result has been securely recorded for evaluation.</p>
+        <button id="play-again">Start New Assessment</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let currentRound = 1;
+            let totalMoney = 100;
+            const maxRounds = 5;
+            let decisions = [];
+            let playerTotal = 0;
+            let receiverTotal = 0;
+            
+            // DOM Elements
+            const roundInfo = document.getElementById('round-info');
+            const totalMoneyEl = document.getElementById('total-money');
+            const slider = document.getElementById('give-amount');
+            const giveValue = document.getElementById('give-value');
+            const yourValue = document.getElementById('your-value');
+            const yourAmount = document.getElementById('your-amount');
+            const receiverAmount = document.getElementById('receiver-amount');
+            const submitButton = document.getElementById('submit-decision');
+            const results = document.getElementById('results');
+            const aggreablenessScore = document.getElementById('aggreableness-score');
+            const historyList = document.getElementById('history-list');
+            const progressBar = document.getElementById('progress-bar');
+            const playAgainBtn = document.getElementById('play-again');
+            const currentScores = document.getElementById('current-scores');
+            const playerTotalEl = document.getElementById('player-total');
+            const receiverTotalEl = document.getElementById('receiver-total');
+
+            // Update display when slider moves
+            slider.oninput = function() {
+                const give = parseInt(this.value);
+                const keep = totalMoney - give;
+                yourValue.textContent = keep;
+                giveValue.textContent = give;
+                yourAmount.textContent = keep;
+                receiverAmount.textContent = give;
+            };
+
+            // Initialize
+            slider.oninput();
+            updateProgress();
+
+            // Submit decision
+            submitButton.onclick = function() {
+                const give = parseInt(slider.value);
+                const keep = totalMoney - give;
+
+                playerTotal += keep;
+                receiverTotal += give;
+
+                // Record decision
+                decisions.push({
+                    round: currentRound,
+                    totalAvailable: totalMoney,
+                    kept: keep,
+                    shared: give
+                });
+
+                // Update history
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.textContent = `R${currentRound}: Kept ${keep}, Shared ${give}`;
+                historyList.appendChild(historyItem);
+
+                // Show cumulative totals
+                playerTotalEl.textContent = playerTotal;
+                receiverTotalEl.textContent = receiverTotal;
+                currentScores.style.display = 'flex';
+
+                if (currentRound >= maxRounds) {
+                    // Hide game, show result
+                    document.querySelector('.game-container').style.display = 'none';
+                    results.style.display = 'block';
+                    results.scrollIntoView({ behavior: 'smooth' });
+
+                    // Calculate behavioral profile
+                    const totalPossible = 100 + 80 + 60 + 40 + 20; // 300
+                    const percentageShared = (receiverTotal / totalPossible) * 100;
+                    let profile;
+
+                    if (percentageShared >= 70) {
+                        profile = "High Cooperation";
+                    } else if (percentageShared >= 40) {
+                        profile = "Balanced Approach";
+                    } else {
+                        profile = "Independent Strategist";
+                    }
+
+                    aggreablenessScore.textContent = profile;
+
+                    // 🔒 FULL DATA LOGGED — FOR ADMIN/HIRING MANAGERS ONLY
+                    const interpretation = percentageShared >= 70 
+                        ? "High generosity and cooperation; likely to prioritize team needs, show empathy, and build trust in collaborative settings."
+                        : percentageShared >= 40 
+                        ? "Adaptive decision-making; balances self-interest with fairness, showing emotional intelligence and situational awareness."
+                        : "Strong self-direction and strategic focus; prioritizes personal efficiency and autonomy, ideal for independent or high-accountability roles.";
+
+                    const fullResult = {
+                        timestamp: new Date().toISOString(),
+                        assessment: "Dictator Game",
+                        rounds: 5,
+                        decisions: decisions,
+                        totals: {
+                            playerTotal,
+                            receiverTotal,
+                            percentageShared: percentageShared.toFixed(1) + '%'
+                        },
+                        behavioralProfile: profile,
+                        interpretation: interpretation
+                    };
+
+                    console.log("%c🔒 InsightGenie - Full Assessment Report", "color: #9CE452; font-weight: bold; font-size: 1.2em;");
+                    console.log("%cProfile:", "color: #339A31; font-weight: bold;", profile);
+                    console.log("%cTotal Shared:", "color: #339A31; font-weight: bold;", `${percentageShared.toFixed(1)}%`);
+                    console.log("%cInterpretation:", "color: #339A31; font-weight: bold;", interpretation);
+                    console.log("📋 Full Data:", fullResult);
+
+                    // In production: send to your backend
+                    // fetch('/api/submit-assessment', { method: 'POST', body: JSON.stringify(fullResult) });
+
+                } else {
+                    currentRound++;
+                    totalMoney -= 20;
+
+                    roundInfo.textContent = `Round ${currentRound} of ${maxRounds}`;
+                    totalMoneyEl.textContent = `Available Energy: ${totalMoney}⚡`;
+                    slider.max = totalMoney;
+                    slider.value = 0;
+                    slider.oninput();
+
+                    updateProgress();
+                }
+            };
+
+            // Play again
+            playAgainBtn.onclick = function() {
+                currentRound = 1;
+                totalMoney = 100;
+                decisions = [];
+                playerTotal = 0;
+                receiverTotal = 0;
+
+                document.querySelector('.game-container').style.display = 'block';
+                results.style.display = 'none';
+                historyList.innerHTML = '';
+                currentScores.style.display = 'none';
+
+                roundInfo.textContent = `Round ${currentRound} of ${maxRounds}`;
+                totalMoneyEl.textContent = `Available Energy: ${totalMoney}⚡`;
+                slider.max = totalMoney;
+                slider.value = 0;
+                slider.oninput();
+
+                updateProgress();
+            };
+
+            function updateProgress() {
+                const progress = (currentRound / maxRounds) * 100;
+                progressBar.style.width = progress + '%';
+            }
+        });
+    </script>
+</body>
+</html>
